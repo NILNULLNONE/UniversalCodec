@@ -29,7 +29,7 @@ struct CHuffmanNodeComparator
 {
     bool operator()(const CHuffmanNode *Left, const CHuffmanNode *Right) const
     {
-        return Left->Weight > Right->Weight;
+        return Left->Weight < Right->Weight;
     }
 };
 
@@ -37,7 +37,7 @@ struct CBitSequenceTable
 {
     using EntryCountType = uint16_t;
     CBitSequence TableData[UCHAR_MAX+1];
-    CSizeType Serialize(int8_t* Dst)
+    CSizeType Serialize(CByteType* Dst)
     {
         CSizeType Step = 0;
         Step += CMemory::Write<EntryCountType>(Dst + Step, static_cast<EntryCountType>(GetEntryCount()));
@@ -50,7 +50,7 @@ struct CBitSequenceTable
         return Step;
     }
 
-    CSizeType Deserialize(const int8_t* Dst)
+    CSizeType Deserialize(const CByteType *Dst)
     {
         CSizeType Step = 0;
         EntryCountType EntryCount = 0;

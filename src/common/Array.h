@@ -337,12 +337,12 @@ public:
         for(int i = 0; i < InSequence.Count(); ++i)
         {
             auto BitIndex = BitCount % 8;
+            auto& LastByte = Data.Last();
+            LastByte |= (InSequence[i] << BitIndex);
             if(BitIndex == 7)
             {
                 Data.Add(0);
             }
-            auto& LastByte = Data.Last();
-            LastByte |= (InSequence[i] << BitIndex);
             BitCount++;
         }
     }
