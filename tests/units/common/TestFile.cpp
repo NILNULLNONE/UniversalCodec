@@ -4,7 +4,7 @@
 TEST(CASE_File, FileReadWrite)
 {
     const char *Filename = "TestFile.dat";
-    CByteType TestBytes[] = {1, 3, 9, -19, 37, -88, 7};
+    CByteType TestBytes[] = {1, 3, 9, 19, 37, 88, 7};
     auto Count = sizeof(TestBytes) / sizeof(CByteType);
     CFile::SaveDataToFile(Filename, TestBytes, sizeof(TestBytes));
 

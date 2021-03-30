@@ -4,13 +4,9 @@
 
 namespace CLog
 {
-    void DebugLog(const char* Format, ...)
-    {
-    #ifndef NDEBUG
-        va_list Args;
-        va_start(Args, Format);
-        vprintf(Format, Args);
-        va_end(Args);
-    #endif
-    }
+    extern bool GEnable;
+    void DebugLog(const char* Format, ...);
+    void TurnOn();
+    void TurnOff();
+    void Toggle();
 }

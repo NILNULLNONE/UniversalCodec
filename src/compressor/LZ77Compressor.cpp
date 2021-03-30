@@ -1,5 +1,6 @@
 #include "LZ77Compressor.h"
 #include "common/Array.h"
+#include "common/Log.h"
 
 struct CSearchInput
 {
@@ -71,6 +72,9 @@ static void WriteSearchData(CArray<CByteType>& CompressedData, const CSearchResu
 
 void CLZ77Compressor::Compress(CByteType *&DstData, CSizeType &DstLen, const CByteType *SrcData, const CSizeType SrcLen)
 {
+    CLog::DebugLog("Start LZ77 Compressing...\n");
+    DstData = nullptr;
+    DstLen = 0;
     CArray<CByteType> CompressedData = {};
     const CSizeType LookAheadBufferSize = 255;
     const CSizeType SearchBufferSize = 255;
@@ -79,6 +83,7 @@ void CLZ77Compressor::Compress(CByteType *&DstData, CSizeType &DstLen, const CBy
     CSearchResult SearchResult;
     while(Iter < SrcLen)
     {
+        CLog::DebugLog("Iter / SrcLen : %u / %u\n", Iter, SrcLen);
         SearchInput.Data = DstData;
         SearchInput.DataLen = DstLen;
         SearchInput.IterStart = Iter;

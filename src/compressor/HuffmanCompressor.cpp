@@ -276,8 +276,9 @@ void CHuffmanCompressor::Compress(CByteType *&DstData, CSizeType &DstLen, const 
 
 void CHuffmanCompressor::Decompress(CByteType *&DstData, CSizeType &DstLen, const CByteType *SrcData, const CSizeType SrcLen)
 {
+    DstData = nullptr;
+    DstLen = 0;
     CSizeType Step = 0;
-
     CLog::DebugLog("Deserialize sequence table...\n");
     CBitSequenceTable Table = {};
     Step += Table.Deserialize(SrcData);
