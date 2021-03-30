@@ -256,6 +256,16 @@ public:
         return Step;
     }
 
+    const ElementType* Begin() const
+    {
+        return DataPtr;
+    }
+
+    const ElementType* End() const
+    {
+        return DataPtr + ArraySize;
+    }
+
 private:
     ElementType* DataPtr = nullptr;
     CSizeType ArraySize = 0;
