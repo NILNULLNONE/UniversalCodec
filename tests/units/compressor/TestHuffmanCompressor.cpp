@@ -2,6 +2,7 @@
 #include "compressor/HuffmanCompressor.h"
 #include "common/File.h"
 #include "TestData.h"
+#include "TestCompressor.h"
 
 TEST(CASE_HuffmanCompressor,EncodeDecode)
 {
@@ -29,47 +30,22 @@ TEST(CASE_HuffmanCompressor, EncodeDecode2)
     GTestData.Free();
 }
 
-static void EncodeFileImpl(const char* OriginFN, const char* EncodedFN)
-{
-    CFile::LoadDataFromFile(OriginFN, 
-        GTestData.OutData1, GTestData.OutData1Len);
-    CHuffmanCompressor Compressor;
-    Compressor.Compress(GTestData.OutData2, GTestData.OutData2Len, 
-        GTestData.OutData1, GTestData.OutData1Len);
-    CFile::SaveDataToFile(EncodedFN, 
-        GTestData.OutData2, GTestData.OutData2Len);
-    GTestData.Free();
-}
-
-static void DecodeFileImpl(const char* EncodedFN, const char* DecodedFN)
-{
-    CFile::LoadDataFromFile(EncodedFN, 
-        GTestData.OutData1, GTestData.OutData1Len);
-    CHuffmanCompressor Compressor;
-    Compressor.Decompress(GTestData.OutData2, GTestData.OutData2Len, 
-        GTestData.OutData1, GTestData.OutData1Len);
-    CFile::SaveDataToFile(DecodedFN, 
-        GTestData.OutData2, GTestData.OutData2Len);
-    GTestData.Free();
-}
-
-
 TEST(CASE_HuffmanCompressor, DISABLED_EncodeBig)
 {
-    EncodeFileImpl(GTestData.TestInFilename_mid, GTestData.TestEncodedFilename_mid);
+    EncodeFileImpl(GTestData.HuffmanCompressor, GTestData.TestInFilename_mid, GTestData.TestEncodedFilename_mid);
 }
 
 TEST(CASE_HuffmanCompressor, DISABLED_DecodeBig)
 {
-    DecodeFileImpl(GTestData.TestEncodedFilename_mid, GTestData.TestDecodedFilename_mid);
+    DecodeFileImpl(GTestData.HuffmanCompressor, GTestData.TestEncodedFilename_mid, GTestData.TestDecodedFilename_mid);
 }
 
 TEST(CASE_HuffmanCompressor, DISABLED_TextEncodeBig)
 {
-    EncodeFileImpl(GTestData.TextTestInFilename, GTestData.TextTestEncodedFilename);
+    EncodeFileImpl(GTestData.HuffmanCompressor, GTestData.TextTestInFilename, GTestData.TextTestEncodedFilename);
 }
 
 TEST(CASE_HuffmanCompressor, DISABLED_TextDecodeBig)
 {
-    DecodeFileImpl(GTestData.TextTestEncodedFilename, GTestData.TextTestDecodedFilename);
+    DecodeFileImpl(GTestData.HuffmanCompressor, GTestData.TextTestEncodedFilename, GTestData.TextTestDecodedFilename);
 }

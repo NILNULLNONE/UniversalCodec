@@ -1,9 +1,13 @@
 #pragma once
 #include "common/TypeDef.h"
 #include "common/Memory.h"
-
+#include "compressor/HuffmanCompressor.h"
+#include "compressor/LZ77Compressor.h"
 struct CCompressorTestData
 {
+    CHuffmanCompressor HuffmanCompressor;
+    CLZ77Compressor LZ77Compressor;
+
     CByteType InData1[4] = {(CByteType)128, (CByteType)128, (CByteType)128, (CByteType)1};
     CSizeType InData1Len = sizeof(InData1) / sizeof(CByteType);
     CByteType InData2[10] = {(CByteType)128, (CByteType)128, (CByteType)128, (CByteType)128,

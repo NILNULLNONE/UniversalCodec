@@ -5,7 +5,7 @@
 #include "TypeDef.h"
 #include "ConstantDef.h"
 #include "Math.h"
-
+#include "common/Log.h"
 template <typename ElementType>
 class CArray
 {
@@ -62,12 +62,12 @@ public:
 
     void Add(const ElementType& Element)
     {
-        ArraySize++;
-        if(ArraySize > DataElementCount)
+        if(ArraySize + 1> DataElementCount)
         {
             Reserve( (DataElementCount+1) << 1);
         }
-        DataPtr[ArraySize-1] = Element;
+        ArraySize++;
+        DataPtr[ArraySize - 1] = Element;
     }
 
     void AddElements(const std::initializer_list<ElementType>& Initializer)
@@ -121,9 +121,9 @@ public:
         }
         else if(DataElementCount < InElementCount)
         {
-            DataElementCount = InElementCount;
-            DataPtr = CMemory::Realloc<ElementType>(DataPtr, DataElementCount);
-            CException::Check(DataPtr != nullptr);
+             DataElementCount = InElementCount;
+             DataPtr = CMemory::Realloc<ElementType>(DataPtr, DataElementCount);
+             CException::Check(DataPtr != nullptr);
         }
     }
 
