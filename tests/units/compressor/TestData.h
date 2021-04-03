@@ -32,9 +32,17 @@ struct CCompressorTestData
     const char *TestEncodedFilename_big = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-Renderer.pdb.enc";
     const char *TestDecodedFilename_big = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-Renderer.pdb.dec";
 
-    const char *TextTestInFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj";
-    const char *TextTestEncodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.enc";
-    const char *TextTestDecodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.dec";
+    const char *BinTestFilename_small = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-PortalMessages.pdb";
+    const char *BinTestEncodedFilename_small = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-PortalMessages.pdb.enc";
+    const char *BinTestDecodedFilename_small = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-PortalMessages.pdb.dec";
+
+    // const char *TextTestInFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj";
+    // const char *TextTestEncodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.enc";
+    // const char *TextTestDecodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.dec";
+
+    const char *TextTestInFilename = "C:\\Users\\35974\\Downloads\\1617460103.txt";
+    const char *TextTestEncodedFilename = "C:\\Users\\35974\\Downloads\\1617460103.txt.enc";
+    const char *TextTestDecodedFilename = "C:\\Users\\35974\\Downloads\\1617460103.txt.dec";
 
     // non-constant
     CByteType *InDataRepeat1024 = nullptr;

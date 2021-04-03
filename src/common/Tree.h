@@ -4,10 +4,10 @@
 // class CBinaryTree
 // {
 // public:
-//     struct CNode
+//     struct CLZ78TrieNode
 //     {
-//         CNode* Left;
-//         CNode* Right;
+//         CLZ78TrieNode* Left;
+//         CLZ78TrieNode* Right;
 //     };
 
 //     void Insert(const ElementType& Element)

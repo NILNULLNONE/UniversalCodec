@@ -3,10 +3,20 @@
 #include <cstdarg>
 #include <cstdio>
 
+#ifdef WIN32
+#include "Windows.h"
+#endif
+
 namespace CException
 {
     void Check(bool Exp)
     {
+#ifdef WIN32
+        if(!Exp)
+        {
+            DebugBreak();
+        }
+#endif
         assert(Exp);
     }
 
