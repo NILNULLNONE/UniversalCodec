@@ -1,12 +1,15 @@
 #pragma once
 #include "common/TypeDef.h"
 #include "common/Memory.h"
-#include "compressor/HuffmanCompressor.h"
-#include "compressor/LZ77Compressor.h"
+#include "compressor/CompressorInterface.h"
+
 struct CCompressorTestData
 {
+    // constant
     CHuffmanCompressor HuffmanCompressor;
     CLZ77Compressor LZ77Compressor;
+    CRLECompressor RLECompressor;
+    CLZ78Compressor LZ78Compressor;
 
     CByteType InData1[4] = {(CByteType)128, (CByteType)128, (CByteType)128, (CByteType)1};
     CSizeType InData1Len = sizeof(InData1) / sizeof(CByteType);
@@ -33,10 +36,27 @@ struct CCompressorTestData
     const char *TextTestEncodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.enc";
     const char *TextTestDecodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.dec";
 
+    // non-constant
+    CByteType *InDataRepeat1024 = nullptr;
+    CSizeType InDataRepeat1024Len = 4;
+
+    CCompressorTestData()
+    {
+        {
+            InDataRepeat1024 = CMemory::Malloc<CByteType>(sizeof(CByteType) * InDataRepeat1024Len);
+            for(int i = 0; i < InDataRepeat1024Len; ++i)InDataRepeat1024[i] = 17;
+        }
+    }
+
     void Free()
     {
         CMemory::SafeFree(OutData1);
         CMemory::SafeFree(OutData2);
+    }
+
+    ~CCompressorTestData()
+    {
+        CMemory::SafeFree(InDataRepeat1024);
     }
 };
 

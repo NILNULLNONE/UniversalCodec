@@ -1,5 +1,5 @@
 #include <climits>
-#include "HuffmanCompressor.h"
+#include "CompressorInterface.h"
 #include "common/Heap.h"
 #include "common/Log.h"
 
@@ -133,6 +133,14 @@ void ConvertToBitSequenceTableImpl(const CHuffmanNode *Root, CBitSequence &Curre
 
 void ConvertToBitSequenceTable(const CHuffmanNode *Root, CBitSequenceTable &OutTable)
 {
+    if (Root->IsLeaf())
+    {
+        CBitSequence Seq;
+        Seq.Add(0);
+        OutTable.Add(Root->Value, Seq);
+        return;
+    }
+
     CBitSequence Sequence;
     ConvertToBitSequenceTableImpl(Root, Sequence, OutTable);
 }
@@ -197,12 +205,12 @@ CHuffmanNode* ConvertToHuffmanTree(const CBitSequenceTable &InTable)
 
 void CHuffmanCompressor::Compress(CByteType *&DstData, CSizeType &DstLen, const CByteType *SrcData, const CSizeType SrcLen)
 {
-    CLog::DebugLog("Start compress...\n");
+    // CLog::DebugLog("Start compress...\n");
     CException::Check(SrcLen > 0);
     const uint8_t *SrcBytes = reinterpret_cast<const uint8_t *>(SrcData);
     int Frequency[UCHAR_MAX+1] = {};
     {
-        CLog::DebugLog("Initialize frequency...\n");
+        // CLog::DebugLog("Initialize frequency...\n");
         CMemory::Fill(Frequency, UCHAR_MAX+1, 0);
         for(int i = 0; i < SrcLen; ++i)Frequency[SrcBytes[i]]++;
     }
@@ -210,23 +218,23 @@ void CHuffmanCompressor::Compress(CByteType *&DstData, CSizeType &DstLen, const 
     int AlphabetSize = 0;
     CHuffmanNode* InitialNodes[UCHAR_MAX+1] = {};
     {
-        CLog::DebugLog("Create initial huffman node...\n");
+        // CLog::DebugLog("Create initial huffman node...\n");
         for (int i = 0; i < UCHAR_MAX+1; ++i)
         {
             if(Frequency[i] > 0)
             {
-                CLog::DebugLog("Frequency %d: %d\n", i, Frequency[i]);
+                // CLog::DebugLog("Frequency %d: %d\n", i, Frequency[i]);
                 InitialNodes[AlphabetSize++] = new CHuffmanNode{nullptr, nullptr, i, Frequency[i]};
             }
         }
     }
     if (AlphabetSize <= 0)return;
 
-    CLog::DebugLog("Build huffman node heap...\n");
+    // CLog::DebugLog("Build huffman node heap...\n");
     CBitSequenceTable Table = {};
     {
         CBinaryHeap<CHuffmanNode *, CHuffmanNodeComparator> NodeHeap(InitialNodes, AlphabetSize);
-        CLog::DebugLog("Update huffman node heap...\n");
+        // CLog::DebugLog("Update huffman node heap...\n");
         for (int i = 0; i < AlphabetSize - 1; ++i)
         {
             CHuffmanNode *Top0 = NodeHeap.Pop();
@@ -235,38 +243,38 @@ void CHuffmanCompressor::Compress(CByteType *&DstData, CSizeType &DstLen, const 
             NodeHeap.Insert(NewNode);
         }
         CHuffmanNode* Root = NodeHeap.Pop();
-        CLog::DebugLog("Convert huffman heap to sequence table...\n");
+        // CLog::DebugLog("Convert huffman heap to sequence table...\n");
         ConvertToBitSequenceTable(Root, Table);
 #ifndef NDEBUG
         {
-            Table.ForEachSequence([](CSizeType InIndex, const CBitSequence& Sequence)
-            {
-                CLog::DebugLog("%d: ");
-                for(int i = 0; i < Sequence.Count(); ++i)
+            // Table.ForEachSequence([](CSizeType InIndex, const CBitSequence& Sequence)
+            // {
+                // CLog::DebugLog("%d: ");
+                // for(int i = 0; i < Sequence.Count(); ++i)
                 {
-                    CLog::DebugLog("%d", Sequence[i]);
+                    // CLog::DebugLog("%d", Sequence[i]);
                 }
-                CLog::DebugLog("\n");
-            });
+                // CLog::DebugLog("\n");
+            // });
         }
 #endif
         Root->Delete();
     }
 
-    CLog::DebugLog("Reencode...\n");
+    // CLog::DebugLog("Reencode...\n");
     {
         CBitStream Stream;
         for (int i = 0; i < SrcLen; ++i)
         {
 #ifndef NDEBUG
-            if ( ((SrcLen/100!=0)&& i % (SrcLen / 100) == 0) || i == SrcLen - 1)
+            // if ( ((SrcLen/100!=0)&& i % (SrcLen / 100) == 0) || i == SrcLen - 1)
             {
-                CLog::DebugLog("Compressed: %d/%d, %.3f%%\n", i, SrcLen, i/double(SrcLen) * 100.0);
+                // CLog::DebugLog("Compressed: %d/%d, %.3f%%\n", i, SrcLen, i/double(SrcLen) * 100.0);
             }
 #endif
             Stream.PutBits(Table.GetBitSequence(SrcBytes[i]));
         }
-        CLog::DebugLog("Write compressed data...\n");
+        // CLog::DebugLog("Write compressed data...\n");
         DstLen = Table.GetSerializeSizeInByte() + Stream.GetSerializeSizeInByte();
         DstData = CMemory::Malloc<CByteType>(DstLen);
         CSizeType Step = Table.Serialize(DstData);
@@ -279,41 +287,41 @@ void CHuffmanCompressor::Decompress(CByteType *&DstData, CSizeType &DstLen, cons
     DstData = nullptr;
     DstLen = 0;
     CSizeType Step = 0;
-    CLog::DebugLog("Deserialize sequence table...\n");
+    // CLog::DebugLog("Deserialize sequence table...\n");
     CBitSequenceTable Table = {};
     Step += Table.Deserialize(SrcData);
-    #ifndef NDEBUG
-        {
-            Table.ForEachSequence([](CSizeType InIndex, const CBitSequence& Sequence)
+#ifndef NDEBUG
+    {
+        // Table.ForEachSequence([](CSizeType InIndex, const CBitSequence& Sequence)
+        // {
+            // CLog::DebugLog("%d: ");
+            // for(int i = 0; i < Sequence.Count(); ++i)
             {
-                CLog::DebugLog("%d: ");
-                for(int i = 0; i < Sequence.Count(); ++i)
-                {
-                    CLog::DebugLog("%d", Sequence[i]);
-                }
-                CLog::DebugLog("\n");
-            });
-        }
+                // CLog::DebugLog("%d", Sequence[i]);
+            }
+            // CLog::DebugLog("\n");
+        // });
+    }
 #endif
 
-    CLog::DebugLog("Convert sequence table to huffman tree...\n");
+    // CLog::DebugLog("Convert sequence table to huffman tree...\n");
     CHuffmanNode* Root = ConvertToHuffmanTree(Table);
     CException::Check(Root);
 
-    CLog::DebugLog("Deserialize compressed stream...\n");
+    // CLog::DebugLog("Deserialize compressed stream...\n");
     CBitStream Stream;
     Step += Stream.Deserialize(SrcData + Step);
 
-    CLog::DebugLog("Start decompressing...\n");
+    // CLog::DebugLog("Start decompressing...\n");
     CHuffmanNode *CurNode = Root;
     CArray<CByteType> Bytes = {};
     CSizeType BitCount = Stream.GetBitCount();
     for (int i = 0; i < BitCount; ++i)
     {
 #ifndef NDEBUG
-        if ( ((BitCount / 100 != 0) && i % (BitCount / 100) == 0) || i == BitCount - 1)
+        // if ( ((BitCount / 100 != 0) && i % (BitCount / 100) == 0) || i == BitCount - 1)
         {
-            CLog::DebugLog("Deompressed: %d/%d, %.3f%%\n", i, BitCount, i/double(BitCount) * 100.0);
+            // CLog::DebugLog("Deompressed: %d/%d, %.3f%%\n", i, BitCount, i/double(BitCount) * 100.0);
         }
 #endif
         auto NextBit = Stream.NextBit();
@@ -347,9 +355,10 @@ void CHuffmanCompressor::Decompress(CByteType *&DstData, CSizeType &DstLen, cons
         //}
     }
     if (Bytes.IsEmpty())return;
-    CLog::DebugLog("Write decompressed data...\n");
-    DstLen = Bytes.SizeInBytes();
-    DstData = CMemory::Malloc<CByteType>(DstLen);
-    CMemory::Copy(DstData, Bytes.GetData(), DstLen);
+    // CLog::DebugLog("Write decompressed data...\n");
+    // DstLen = Bytes.SizeInBytes();
+    // DstData = CMemory::Malloc<CByteType>(DstLen);
+    // CMemory::Copy(DstData, Bytes.GetData(), DstLen);
+    Bytes.DiscardTo(DstData, DstLen);
     Root->Delete();
 }

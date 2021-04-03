@@ -1,6 +1,6 @@
-#include "LZ77Compressor.h"
 #include "common/Array.h"
 #include "common/Log.h"
+#include "CompressorInterface.h"
 
 struct CSearchInput
 {
@@ -37,7 +37,7 @@ static void Search(const CSearchInput& Input, CSearchResult& Result)
         // CLog::DebugLog("Search Outer: %d / %d\n", Idx, Input.IterStart);
         CSizeType Idx2 = Idx, Iter = Input.IterStart;
         CSizeType IterEnd = Input.IterStart + Input.LookAheadBufferSize;
-        while (/* Idx2 < Input.IterStart &&*/ Iter < IterEnd && Iter < Input.DataLen - 1)
+        while (/* Idx2 < Input.IterStart &&*/ Iter < IterEnd && Iter < Input.DataLen - 1 && Iter - Input.IterStart < 255)
         {
             // CLog::DebugLog("Search Inner: %d / %d / %d\n", Idx2, IterEnd, Input.DataLen - 1);
             if(Input.Data[Idx2] == Input.Data[Iter])
@@ -89,8 +89,8 @@ void CLZ77Compressor::Compress(CByteType *&DstData, CSizeType &DstLen, const CBy
     while(Iter < SrcLen)
     {
 #ifndef NDEBUG
-        if ((SrcLen / 100 != 0 && Iter % (SrcLen / 100) == 0) || Iter == SrcLen - 1)
-            CLog::DebugLog("Compressed: %d/%d, %.3f%%\n", Iter, SrcLen, Iter / double(SrcLen) * 100.0);
+        // if ((SrcLen / 100 != 0 && Iter % (SrcLen / 100) == 0) || Iter == SrcLen - 1)
+            // CLog::DebugLog("Compressed: %d/%d, %.3f%%\n", Iter, SrcLen, Iter / double(SrcLen) * 100.0);
 #endif
         SearchInput.Data = SrcData;
         SearchInput.DataLen = SrcLen;
@@ -135,8 +135,8 @@ void CLZ77Compressor::Decompress(CByteType *&DstData, CSizeType &DstLen, const C
     while (Iter < CompressedDataLen)
     {
 #ifndef NDEBUG
-        if ((CompressedDataLen / 100 != 0 && Iter % (CompressedDataLen / 100) == 0) || Iter == CompressedDataLen - 1)
-            CLog::DebugLog("Compressed: %d/%d, %.3f%%\n", Iter, CompressedDataLen, Iter / double(CompressedDataLen) * 100.0);
+        // if ((CompressedDataLen / 100 != 0 && Iter % (CompressedDataLen / 100) == 0) || Iter == CompressedDataLen - 1)
+            // CLog::DebugLog("Compressed: %d/%d, %.3f%%\n", Iter, CompressedDataLen, Iter / double(CompressedDataLen) * 100.0);
 #endif
         Iter += WriteDecompressedData(DecompressedData,
             CompressedData.GetData(), CompressedData.SizeInBytes(), Iter);

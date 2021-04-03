@@ -15,10 +15,10 @@ public:
 
     }
 
-    CArray(const ElementType* InData, CSizeType ElementCount, CSizeType Bias = 0)
+    CArray(const ElementType* InData, CSizeType ElementCount)
     {
-        Resize(ElementCount + Bias);
-        CMemory::Copy(DataPtr + Bias, InData, ElementCount * sizeof(ElementType));
+        Resize(ElementCount);
+        CMemory::Copy(DataPtr, InData, ElementCount * sizeof(ElementType));
     }
 
     CArray(const CArray<ElementType>& Other)
@@ -80,6 +80,13 @@ public:
         }
     }
 
+    void Concat(const CArray<ElementType>& Other)
+    {
+        if(Other.IsEmpty())return;
+        Resize(Count() + Other.Count());
+        CMemory::Copy(End() - Other.Count(), Other.GetData(), Other.Count());
+    }
+
     void RemoveAt(CSizeType Index)
     {
         CException::Check(IsValidIndex(Index));
@@ -118,12 +125,19 @@ public:
             DataElementCount = InElementCount;
             DataPtr = CMemory::Malloc<ElementType>(InElementCount);
             CException::Check(DataPtr != nullptr);
+            CMemory::Zero(DataPtr, sizeof(ElementType) * DataElementCount);
         }
         else if(DataElementCount < InElementCount)
         {
-             DataElementCount = InElementCount;
-             DataPtr = CMemory::Realloc<ElementType>(DataPtr, DataElementCount);
-             CException::Check(DataPtr != nullptr);
+            CSizeType OldCount = DataElementCount;
+            DataElementCount = InElementCount;
+            DataPtr = CMemory::Realloc<ElementType>(DataPtr, DataElementCount);
+            CException::Check(DataPtr != nullptr);
+            if (OldCount < DataElementCount)
+            {
+                CSizeType Over = DataElementCount - OldCount;
+                CMemory::Zero(DataPtr + OldCount, Over * sizeof(ElementType));
+            }
         }
     }
 
@@ -219,6 +233,12 @@ public:
         return *this;
     }
 
+    CArray<ElementType>& operator=(CArray<ElementType>&& Other)
+    {
+        CMemory::Copy(this, &Other, sizeof(CArray<ElementType>));
+        CMemory::Zero(&Other, sizeof(CArray<ElementType>));
+    }
+
     template <typename HandlerType>
     void ForEach(const HandlerType& InHandler) const
     {
@@ -256,16 +276,17 @@ public:
         return Step;
     }
 
-    const ElementType* Begin() const
+    void DiscardTo(ElementType*& OutData, CSizeType& OutLen)
     {
-        return DataPtr;
+        OutData = DataPtr;
+        OutLen = ArraySize;
+        CMemory::Zero(this, sizeof(*this));
     }
 
-    const ElementType* End() const
-    {
-        return DataPtr + ArraySize;
-    }
-
+    const ElementType* Begin() const {return DataPtr;}
+    ElementType* Begin(){return DataPtr;}
+    const ElementType* End() const {return DataPtr + ArraySize;}
+    ElementType* End() {return DataPtr + ArraySize;}
 private:
     ElementType* DataPtr = nullptr;
     CSizeType ArraySize = 0;

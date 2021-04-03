@@ -13,6 +13,12 @@ TEST(CASE_ArrayAdd, AddOne)
     EXPECT_EQ(Array.At(0), -1);
 }
 
+TEST(CASE_ArrayResize, Nest)
+{
+    CArray<CArray<CByteType>>NestArr = {};
+    NestArr.Resize(2);
+}
+
 TEST(CASE_ArrayGet, Getter)
 {
     CArray<int> Array;

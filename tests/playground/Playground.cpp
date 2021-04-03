@@ -1,9 +1,9 @@
 #include <cstdio>
-#include "compressor/HuffmanCompressor.h"
+// #include "compressor/HuffmanCompressor.h"
 
 int main()
 {
-    CHuffmanCompressor Compressor;
+    // CHuffmanCompressor Compressor;
     printf("Hello world!\n");
     return 0;
 }

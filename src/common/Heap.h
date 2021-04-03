@@ -75,8 +75,9 @@ public:
     }
 
     CBinaryHeap(const ElementType *InData, CSizeType ElementCount)
-        : Data(InData, ElementCount, 1)
     {
+        Data.Resize(ElementCount+1);
+        CMemory::Copy(Data.GetData()+1, InData, ElementCount * sizeof(ElementType));
         COperation::BuildHeap(GetArrayData(), GetHeapArraySize(), Comparator);
     }
 
