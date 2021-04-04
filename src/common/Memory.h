@@ -5,6 +5,16 @@
 
 namespace CMemory
 {
+    CSizeType Copy(void *Dst, const void *Src, CSizeType Size);
+
+    void Zero(void *Dst, CSizeType InLen);
+
+    int Compare(const void *Buf1, const void *Buf2, CSizeType Size);
+    
+    bool Equal(const void *Buf1, const void *Buf2, CSizeType Size);
+
+    void SwapEndian(void *Data, CSizeType DataLen);
+
     template<typename ElementType>
     ElementType* Malloc(int ElementCount)
     {
@@ -25,10 +35,6 @@ namespace CMemory
         free(InPtr);
         InPtr = nullptr;
     }
-
-    CSizeType Copy(void *Dst, const void *Src, CSizeType Size);
-
-    void Zero(void* Dst, CSizeType InLen);
 
     template<typename ElementType>
     void Fill(ElementType* DstData, CSizeType DstLen, const ElementType& InValue)
@@ -61,5 +67,35 @@ namespace CMemory
         CSizeType Size = sizeof(Value);
         memcpy(&Value, SrcData, Size);
         return Size;
+    }
+
+    template<typename Type>
+    Type* Cast(void* Ptr)
+    {
+        return static_cast<Type*>(Ptr);
+    }
+
+    template <typename Type>
+    const Type *Cast(const void *Ptr)
+    {
+        return static_cast<Type *>(Ptr);
+    }
+
+    template<typename Type>
+    Type* ForceCast(void* Ptr)
+    {
+        return reinterpret_cast<Type*>(Ptr);
+    }
+
+    template <typename Type>
+    const Type *ForceCast(const void *Ptr)
+    {
+        return reinterpret_cast<const Type *>(Ptr);
+    }
+
+    template <typename Type>
+    void SwapEndian(Type &Value)
+    {
+        SwapEndian(&Value, sizeof(Type));
     }
 };

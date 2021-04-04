@@ -15,6 +15,11 @@ public:
 
     }
 
+    CArray(const std::initializer_list<ElementType>& Initializer)
+    {
+        AddElements(Initializer);
+    }
+
     CArray(const ElementType* InData, CSizeType ElementCount)
     {
         Resize(ElementCount);
@@ -72,6 +77,7 @@ public:
 
     void AddElements(const std::initializer_list<ElementType>& Initializer)
     {
+        Reserve(Count() + Initializer.size());
         auto Beg = Initializer.begin();
         while(Beg != Initializer.end())
         {
@@ -82,9 +88,14 @@ public:
 
     void Concat(const CArray<ElementType>& Other)
     {
-        if(Other.IsEmpty())return;
-        Resize(Count() + Other.Count());
-        CMemory::Copy(End() - Other.Count(), Other.GetData(), Other.Count());
+        Concat(Other.GetData(), Other.Count());
+    }
+
+    void Concat(const ElementType* Other, const CSizeType OtherLen)
+    {
+        if(OtherLen <= 0)return;
+        Resize(Count() + OtherLen);
+        CMemory::Copy(End() - OtherLen, Other, OtherLen);
     }
 
     void RemoveAt(CSizeType Index)
@@ -95,7 +106,7 @@ public:
             DataPtr[i] = DataPtr[i+1];
         }
         ArraySize--;
-        if(ArraySize < (DataElementCount >> 2))Shrink();
+        // if(ArraySize < (DataElementCount >> 2))Shrink();
     }
 
     void RemoveLast()
@@ -125,19 +136,12 @@ public:
             DataElementCount = InElementCount;
             DataPtr = CMemory::Malloc<ElementType>(InElementCount);
             CException::Check(DataPtr != nullptr);
-            CMemory::Zero(DataPtr, sizeof(ElementType) * DataElementCount);
         }
         else if(DataElementCount < InElementCount)
         {
-            CSizeType OldCount = DataElementCount;
-            DataElementCount = InElementCount;
-            DataPtr = CMemory::Realloc<ElementType>(DataPtr, DataElementCount);
-            CException::Check(DataPtr != nullptr);
-            if (OldCount < DataElementCount)
-            {
-                CSizeType Over = DataElementCount - OldCount;
-                CMemory::Zero(DataPtr + OldCount, Over * sizeof(ElementType));
-            }
+             DataElementCount = InElementCount;
+             DataPtr = CMemory::Realloc<ElementType>(DataPtr, DataElementCount);
+             CException::Check(DataPtr != nullptr);
         }
     }
 
@@ -351,14 +355,14 @@ public:
     }
 };
 
-class CBitStream 
+class CZlibBitStream 
 {
 private:
     CArray<CByteType> Data;
     CSizeType Pos = 0;
     CSizeType BitCount = 0;
 public:
-    CBitStream()
+    CZlibBitStream()
     {
         Data.Add(0);
     }

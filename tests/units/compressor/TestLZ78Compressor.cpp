@@ -29,15 +29,15 @@ TEST(CASE_LZ78Compressor, CompressRepeat)
      DecodeFileImpl(GTestData.LZ78Compressor, GTestData.TextTestEncodedFilename, GTestData.TextTestDecodedFilename);
  }
 
-TEST(CASE_LZ78Compressor, EncodeSmall)
-{
-    EncodeFileImpl(GTestData.LZ78Compressor, GTestData.BinTestFilename_small, GTestData.BinTestEncodedFilename_small);
-}
+// TEST(CASE_LZ78Compressor, EncodeSmall)
+// {
+//     EncodeFileImpl(GTestData.LZ78Compressor, GTestData.BinTestFilename_small, GTestData.BinTestEncodedFilename_small);
+// }
 
-TEST(CASE_LZ78Compressor, DecodeSmall)
-{
-    DecodeFileImpl(GTestData.LZ78Compressor, GTestData.BinTestEncodedFilename_small, GTestData.BinTestDecodedFilename_small);
-}
+// TEST(CASE_LZ78Compressor, DecodeSmall)
+// {
+//     DecodeFileImpl(GTestData.LZ78Compressor, GTestData.BinTestEncodedFilename_small, GTestData.BinTestDecodedFilename_small);
+// }
 
 // TEST(CASE_LZ78Compressor, EncodeBig)
 // {

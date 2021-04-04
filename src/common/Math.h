@@ -38,4 +38,10 @@ namespace CMath
     {
         return (Up - 1) / Down + 1;
     }
+
+    template<typename Type>
+    bool InRange(Type Value, Type Left, Type Right)
+    {
+        return Left <= Value && Value <= Right;
+    }
 }
