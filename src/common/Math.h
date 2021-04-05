@@ -71,4 +71,5 @@ namespace CMath
         CSizeType Bits = sizeof(Type) * 8;
         return Bits - BitCounts(Value);
     }
+
 }

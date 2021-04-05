@@ -16,4 +16,5 @@ auto GetBinaryStr = [](CSizeType InValue, CSizeType BitCnt)->char*
 
 class CString
 {
+public:
 };

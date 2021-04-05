@@ -5,6 +5,8 @@ class CMediaCodec
 
 };
 
+
+
 class CPNGCodec : public CMediaCodec
 {
 public:
