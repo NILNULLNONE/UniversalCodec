@@ -19,15 +19,15 @@ TEST(CASE_LZ77Compressor, CompressRepeat)
     CompressorConsistencyCheck(GTestData.LZ77Compressor, GTestData.InDataRepeat1024, GTestData.InDataRepeat1024Len);
 }
 
-TEST(CASE_LZ77Compressor, TextEncodeBig)
-{
-    EncodeFileImpl(GTestData.LZ77Compressor, GTestData.TextTestInFilename, GTestData.TextTestEncodedFilename);
-}
+// TEST(CASE_LZ77Compressor, TextEncodeBig)
+// {
+//     EncodeFileImpl(GTestData.LZ77Compressor, GTestData.TextTestInFilename, GTestData.TextTestEncodedFilename);
+// }
 
-TEST(CASE_LZ77Compressor, TextDecodeBig)
-{
-    DecodeFileImpl(GTestData.LZ77Compressor, GTestData.TextTestEncodedFilename, GTestData.TextTestDecodedFilename);
-}
+// TEST(CASE_LZ77Compressor, TextDecodeBig)
+// {
+//     DecodeFileImpl(GTestData.LZ77Compressor, GTestData.TextTestEncodedFilename, GTestData.TextTestDecodedFilename);
+// }
 
 // TEST(CASE_LZ77Compressor, DISABLED_EncodeBig)
 // {

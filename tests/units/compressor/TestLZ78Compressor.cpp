@@ -19,15 +19,15 @@ TEST(CASE_LZ78Compressor, CompressRepeat)
     CompressorConsistencyCheck(GTestData.LZ78Compressor, GTestData.InDataRepeat1024, GTestData.InDataRepeat1024Len);
 }
 
- TEST(CASE_LZ78Compressor, TextEncodeBig)
- {
-     EncodeFileImpl(GTestData.LZ78Compressor, GTestData.TextTestInFilename, GTestData.TextTestEncodedFilename);
- }
+//  TEST(CASE_LZ78Compressor, TextEncodeBig)
+//  {
+//      EncodeFileImpl(GTestData.LZ78Compressor, GTestData.TextTestInFilename, GTestData.TextTestEncodedFilename);
+//  }
 
- TEST(CASE_LZ78Compressor, TextDecodeBig)
- {
-     DecodeFileImpl(GTestData.LZ78Compressor, GTestData.TextTestEncodedFilename, GTestData.TextTestDecodedFilename);
- }
+//  TEST(CASE_LZ78Compressor, TextDecodeBig)
+//  {
+//      DecodeFileImpl(GTestData.LZ78Compressor, GTestData.TextTestEncodedFilename, GTestData.TextTestDecodedFilename);
+//  }
 
 // TEST(CASE_LZ78Compressor, EncodeSmall)
 // {

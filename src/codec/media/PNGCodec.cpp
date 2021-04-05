@@ -84,8 +84,16 @@ void ReadChunks(const CByteType *SrcData, CSizeType SrcLen,
 #pragma pack(1)
 struct CHDRChunk 
 {
+    enum EColorType
+    {
+        GreyScale = 0,          // L
+        TrueColor = 2,          // RGB
+        IndexedColor = 3,       // I
+        GreyScaleAlpha = 4,     // L/A
+        TrueColorAlpha = 6      // RGBA
+    };
     CSizeType ImgWidth, ImgHeight;
-    CByteType BitDepth;
+    CByteType BitDepth;             // 1, 2, 4, 8, 16
     CByteType ColorType;
     CByteType CompressionMethod;
     CByteType FilterMethod;
@@ -98,6 +106,56 @@ struct CHDRChunk
         CMemory::SwapEndian(ImgWidth);
         CMemory::SwapEndian(ImgHeight);
     }
+
+    bool UsePalette() const 
+    {
+        return (EColorType)ColorType == EColorType::IndexedColor;
+    }
+
+    CByteType GetChannelNum() const 
+    {
+        auto Type = (EColorType) ColorType;
+        switch (ColorType)
+        {
+        case GreyScale:
+        case IndexedColor:  
+            return 1;
+        case GreyScaleAlpha:
+            return 2;
+        case TrueColor:
+            return 3;
+        case TrueColorAlpha:
+            return 4;
+        default:
+            break;
+        }
+        CException::Check(0);
+        return 0;
+    }
+
+    CByteType GetBitDepth() const 
+    {
+        return BitDepth;
+    }
+
+    bool IsRGBA() const {return (EColorType)ColorType == EColorType::TrueColorAlpha;}
+
+    bool IsRGB() const {return (EColorType)ColorType == EColorType::TrueColor;}
+
+    bool IsGrey() const {return (EColorType)ColorType == EColorType::GreyScale;}
+
+    bool IsGreyAlpha() const { return (EColorType)ColorType == EColorType::GreyScaleAlpha; }
+
+    CByteType GetPixelSizeInByte() const
+    {
+        return GetBitDepth() / 8 * GetChannelNum();
+    }
+
+    CSizeType GetImageWidth() const { return ImgWidth; }
+
+    CSizeType GetImageHeight() const { return ImgHeight; }
+
+    CSizeType GetScanlineSizeInByte() const {return GetImageWidth() * GetPixelSizeInByte();}
 };
 
 struct CPLTEChunk
@@ -304,6 +362,24 @@ struct CDynamicHuffmanTree
             return Right;
         }
 
+        static void DebugLogImpl(CCodeNode* Node, CSizeType Depth)
+        {
+            if(!Node)return;
+            for(int i = 0; i < Depth; ++i)CLog::DebugLog("\t");
+            CLog::DebugLog("[%u]\n", Node->Value);
+            for(int i = 0; i < Depth; ++i)CLog::DebugLog("\t");
+            CLog::DebugLog("[L]\n");
+            DebugLogImpl(Node->Left, Depth + 1);
+            for(int i = 0; i < Depth; ++i)CLog::DebugLog("\t");
+            CLog::DebugLog("[R]\n");
+            DebugLogImpl(Node->Right, Depth + 1);
+        }
+
+        void DebugLog()
+        {
+            DebugLogImpl(this, 0);
+        }
+
         CSizeType Value = 0;
         CCodeNode* Left = nullptr;
         CCodeNode* Right = nullptr;
@@ -319,7 +395,10 @@ struct CDynamicHuffmanTree
         }
         CBitType Bit = ((Code & (1 << (CodeLen-1))) != 0);
         CCodeNode** Node = (Bit? &Root->Right : &Root->Left);
-        (*Node) = new CCodeNode{};
+        if (!*Node)
+        {
+            (*Node) = new CCodeNode{};
+        }
         Insert(*Node, Code, Value, CodeLen - 1);
     }
 
@@ -340,7 +419,13 @@ struct CDynamicHuffmanTree
         for(int i = 0; i < CodeLengths.Count(); ++i)
         {
             Counts[CodeLengths[i]]++;
-        } 
+        }
+
+        CLog::DebugLog("BitCounts:\n");
+        for (int i = 0; i < Counts.Count(); ++i)
+        {
+            CLog::DebugLog("\t %d | %u\n", i, Counts[i]);
+        }
 
         CArray<CSizeType> NextCode(MaxBits+1, 0);
         Counts[0] = 0;
@@ -351,23 +436,57 @@ struct CDynamicHuffmanTree
                 NextCode[i] = Code;
         }
 
-        CArray<CSizeType> Codes(Values.Count(), 0);
+        CLog::DebugLog("NextCode:\n");
+        for (int i = 0; i < NextCode.Count(); ++i)
+        {
+            CLog::DebugLog("\t %d | %u\n", i, NextCode[i]);
+        }
+
+        CSizeType MaxCode = 0;
+        Values.ForEach([&](CSizeType Index, const auto& Value){MaxCode = CMath::Max(MaxCode, Value);});
+        CArray<CSizeType> CodeLengthOf(MaxCode+1, 0);
         for(int i = 0; i < Values.Count(); ++i)
         {
-            auto Len = CodeLengths[i];
+            CodeLengthOf[Values[i]] = CodeLengths[i];
+        }
+
+        CArray<CSizeType> Codes(MaxCode+1, 0);
+        for (int ValueCode = 0; ValueCode <= MaxCode; ++ValueCode)
+        {
+            // auto Len = CodeLengths[i];
+            auto Len = CodeLengthOf[ValueCode];
             if(Len != 0)
             {
-                Codes[i] = NextCode[Len];
+                Codes[ValueCode] = NextCode[Len];
                 NextCode[Len]++;
             }
         }
     
+        auto GetBinaryStr = [](CSizeType InValue, CSizeType BitCnt)->char*
+        {
+            static char Buffer[64];
+            memset(Buffer, 0, sizeof(Buffer));
+            // auto BitCnt = CMath::BitCount(InValue);
+            for(int i = 0; i< BitCnt; ++i)
+            {
+                Buffer[BitCnt-i-1] = ( (InValue & (1<<i)) != 0? '1' : '0');
+            }
+            return Buffer;
+        };
+
+        for(int i = 0; i < Values.Count(); ++i)
+        {
+            CLog::DebugLog("% 3u | % 2u | %s\n",
+                Values[i], CodeLengths[i], GetBinaryStr(Codes[Values[i]], CodeLengths[i]));
+        }
+
         for(int i = 0; i < Values.Count(); ++i)
         {
             CByteType Len = CodeLengths[i];
             if(Len != 0)
             {
-                Insert(Tree->Root, Codes[i], Values[i], Len);
+                CLog::DebugLog("Insert: %u, %u, %u\n", Values[i], (CSizeType)Len, Codes[Values[i]]);
+                Insert(Tree->Root, Codes[Values[i]], Values[i], Len);
             }
         }
 
@@ -410,6 +529,20 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
 
         {
             CLog::DebugLog("HLIT: %u, HDIST: %u, HCLEN: %u\n", HLIT, HDIST, HCLEN);      
+        }
+
+        {
+            // test build huffman tree
+            // CArray<CSizeType> Values = {'J', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'};
+            // CArray<CByteType> Lengths = {0, 3, 3, 3, 3, 3, 2, 4, 4, 0};
+            // CDynamicHuffmanTree::Build(Values, Lengths)->Root->DebugLog();
+        }
+
+        {
+            // test build huffman tree
+            // CArray<CSizeType> Values = {'A', 'B', 'C', 'D'};
+            // CArray<CByteType> Lengths = {2, 1, 3, 3};
+            // CDynamicHuffmanTree::Build(Values, Lengths)->Root->DebugLog();
         }
 
         /*
@@ -463,116 +596,181 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
         // Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
 
         /*
-            The code length repeat codes can cross from HLIT + 257 to the HDIST + 1 code lengths. 
-            In other words, all code lengths form a single sequence of HLIT + HDIST + 258 values.
+            HLIT + 257 code lengths for the literal/length alphabet,
+            encoded using the code length Huffman code
         */
         CArray<CSizeType> LitLenValues = {};
         CArray<CByteType> LitLenCodeLengths = {};
-        CArray<CSizeType> DistValues = {};
-        CArray<CByteType> DistCodeLength = {};
-        CSizeType TotalLengths = HLIT + HDIST + 258;
-        CSizeType LengthCnt = 0;
-        CSizeType LitLenCnt = HLIT + 257;
-        CSizeType DistCnt = HDIST + 1;
-        CByteType PrevCodeLen = 0;
-
-        auto GetCurrentValuesArray = 
-            [&LitLenValues, &DistValues, LitLenCnt]
-            (CSizeType LengthCnt) 
-            -> CArray<CSizeType>& 
-            {return LengthCnt < LitLenCnt? LitLenValues : DistValues;};
-
-        auto GetCurrentLengthArray = 
-            [&LitLenCodeLengths, &DistCodeLength, LitLenCnt]
-            (CSizeType LengthCnt) 
-            -> CArray<CByteType>& 
-            {return LengthCnt < LitLenCnt? LitLenCodeLengths : DistCodeLength;};
-
-        auto GetCurrentValue = [LitLenCnt](CSizeType LengthCnt)
+        auto AddCodeLens = [](CSizeType DecodedLen, CSizeType& ValueStart,
+            CArray<CByteType>& Lens, CArray<CSizeType>& Values, CByteType& PreLen,
+            CZlibBitStream& Stream, CSizeType CountLimit) -> bool
         {
-            return LengthCnt < LitLenCnt? LengthCnt : (LengthCnt - LitLenCnt);
-        };
-
-        auto Repeat = [&](CSizeType RepeatTimes, CByteType Value)
-        {
-            for(int i = 0; i < RepeatTimes; ++i)
+            if(DecodedLen <= 15)
             {
-                GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-                GetCurrentLengthArray(LengthCnt).Add(Value);
-                TotalLengths--;
-                LengthCnt++;
+                Lens.Add(DecodedLen);
+                Values.Add(ValueStart++);
+                PreLen = DecodedLen;
             }
-        };
-
-        while(TotalLengths > 0)
-        {
-            CSizeType CodeLen = CodeLengthsTree->Decode(Stream);
-            // 0 - 15: Represent code lengths of 0 - 15
-            if(CodeLen <= 15)
+            else if(DecodedLen <= 18)
             {
-                GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-                GetCurrentLengthArray(LengthCnt).Add(CodeLen);
-                TotalLengths--;
-                LengthCnt++;
-                PrevCodeLen = CodeLen;
-            }
-            /*
-            16: Copy the previous code length 3 - 6 times.
-                The next 2 bits indicate repeat length(0 = 3, ... , 3 = 6)
-                Example: Codes 8, 16 (+2 bits 11),
-                16 (+2 bits 10) will expand to
-                12 code lengths of 8 (1 + 6 + 5)
-            */
-            else if(CodeLen == 16)
-            {
-                CSizeType RepeatTimes = Stream.NextBits(2);
-                Repeat(RepeatTimes, PrevCodeLen);
-                // for(int i = 0; i < RepeatTimes; ++i)
-                // {
-                //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-                //     GetCurrentLengthArray(LengthCnt).Add(PrevCodeLen);
-                //     TotalLengths--;
-                //     LengthCnt++;
-                // }
-            }
-            // 17: Repeat a code length of 0 for 3 - 10 times. (3 bits of length)
-            else if(CodeLen == 17)
-            {
-                CSizeType RepeatTimes = Stream.NextBits(3) + 3;
-                Repeat(RepeatTimes, 0);
-                PrevCodeLen = 0;
-                // for (int i = 0; i < RepeatTimes; ++i)
-                // {
-                //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-                //     GetCurrentLengthArray(LengthCnt).Add(0);
-                //     TotalLengths--;
-                //     LengthCnt++;
-                // }
-            }
-            // 18: Repeat a code length of 0 for 11 - 138 times (7 bits of length)
-            else if(CodeLen == 18)
-            {
-                CSizeType RepeatTimes = Stream.NextBits(7) + 11;
-                Repeat(RepeatTimes, 0);
-                PrevCodeLen = 0;
-                // for (int i = 0; i < RepeatTimes; ++i)
-                // {
-                //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-                //     GetCurrentLengthArray(LengthCnt).Add(0);
-                //     TotalLengths--;
-                //     LengthCnt++;
-                // }
+                CByteType RepeatValue = (DecodedLen == 16? PreLen : 0);
+                // TODO: Should cahnge PreLen?
+                PreLen = RepeatValue;
+                CSizeType RepeatTimes = (DecodedLen == 16? (Stream.NextBits(2) + 3)
+                                        : DecodedLen == 17? (Stream.NextBits(3) + 3)
+                                        : (Stream.NextBits(7) + 11));
+                for(int i = 0; i < RepeatTimes && Lens.Count() < CountLimit; ++i)
+                {
+                    Lens.Add(PreLen);
+                    Values.Add(ValueStart++);
+                }
             }
             else
             {
                 CException::Check(0);
             }
-        }
+            return Lens.Count() < CountLimit;
+        };
+
+        CByteType PreLen = 0;
+        CSizeType ValueStart = 0;
+        while(AddCodeLens(CodeLengthsTree->Decode(Stream), ValueStart, LitLenCodeLengths,
+            LitLenValues, PreLen, Stream, HLIT+257));
+        Trees->LitLenTree = CDynamicHuffmanTree::Build(LitLenValues, LitLenCodeLengths);
+
+        /*
+            HDIST + 1 code lengths for the distance alphabet,
+            encoded using the code length Huffman code
+        */
+        CArray<CSizeType> DistValues = {};
+        CArray<CByteType> DistCodeLength = {};
+        PreLen = 0;
+        ValueStart = 0;
+        while(AddCodeLens(CodeLengthsTree->Decode(Stream), ValueStart, DistCodeLength,
+            DistValues, PreLen, Stream, HDIST + 1));
+        Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
+
+        // /*
+        //     The code length repeat codes can cross from HLIT + 257 to the HDIST + 1 code lengths. 
+        //     In other words, all code lengths form a single sequence of HLIT + HDIST + 258 values.
+        // */
+        // CArray<CSizeType> LitLenValues = {};
+        // CArray<CByteType> LitLenCodeLengths = {};
+        // CArray<CSizeType> DistValues = {};
+        // CArray<CByteType> DistCodeLength = {};
+        // CSizeType TotalLengths = HLIT + HDIST + 258;
+        // CSizeType LengthCnt = 0;
+        // CSizeType LitLenCnt = HLIT + 257;
+        // CSizeType DistCnt = HDIST + 1;
+        // CByteType PrevCodeLen = 0;
+
+        // auto GetCurrentValuesArray = 
+        //     [&LitLenValues, &DistValues, LitLenCnt]
+        //     (CSizeType LengthCnt) 
+        //     -> CArray<CSizeType>& 
+        //     {return LengthCnt < LitLenCnt? LitLenValues : DistValues;};
+
+        // auto GetCurrentLengthArray = 
+        //     [&LitLenCodeLengths, &DistCodeLength, LitLenCnt]
+        //     (CSizeType LengthCnt) 
+        //     -> CArray<CByteType>& 
+        //     {return LengthCnt < LitLenCnt? LitLenCodeLengths : DistCodeLength;};
+
+        // auto GetCurrentValue = [LitLenCnt](CSizeType LengthCnt)
+        // {
+        //     return LengthCnt < LitLenCnt? LengthCnt : (LengthCnt - LitLenCnt); 
+        // };
+
+        // auto Repeat = [&](CSizeType RepeatTimes, CByteType Value)
+        // {
+        //     for(int i = 0; i < RepeatTimes && TotalLengths > 0; ++i)
+        //     {
+        //         GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
+        //         GetCurrentLengthArray(LengthCnt).Add(Value);
+        //         TotalLengths--;
+        //         LengthCnt++;
+        //     }
+        // };
+
+        // while(TotalLengths > 0)
+        // {
+        //     // CLog::DebugLog("LenCnt: %u\n", LengthCnt);
+        //     CSizeType CodeLen = CodeLengthsTree->Decode(Stream);
+        //     CLog::DebugLog("LenCnt: %u, CodeLen: %u\n", LengthCnt, CodeLen);
+        //     // 0 - 15: Represent code lengths of 0 - 15
+        //     if(CodeLen <= 15)
+        //     {
+        //         GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
+        //         GetCurrentLengthArray(LengthCnt).Add(CodeLen);
+        //         TotalLengths--;
+        //         LengthCnt++;
+        //         PrevCodeLen = CodeLen;
+        //     }
+        //     /*
+        //     16: Copy the previous code length 3 - 6 times.
+        //         The next 2 bits indicate repeat length(0 = 3, ... , 3 = 6)
+        //         Example: Codes 8, 16 (+2 bits 11),
+        //         16 (+2 bits 10) will expand to
+        //         12 code lengths of 8 (1 + 6 + 5)
+        //     */
+        //     else if(CodeLen == 16)
+        //     {
+        //         CSizeType RepeatTimes = Stream.NextBits(2) + 3;
+        //         CLog::DebugLog("Repeat: %u, %u\n", PrevCodeLen, RepeatTimes);
+        //         Repeat(RepeatTimes, PrevCodeLen);
+        //         // for(int i = 0; i < RepeatTimes; ++i)
+        //         // {
+        //         //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
+        //         //     GetCurrentLengthArray(LengthCnt).Add(PrevCodeLen);
+        //         //     TotalLengths--;
+        //         //     LengthCnt++;
+        //         // }
+        //     }
+        //     // 17: Repeat a code length of 0 for 3 - 10 times. (3 bits of length)
+        //     else if(CodeLen == 17)
+        //     {
+        //         CSizeType RepeatTimes = Stream.NextBits(3) + 3;
+        //         CLog::DebugLog("Repeat: %u, %u\n", 0, RepeatTimes);
+        //         Repeat(RepeatTimes, 0);
+        //         PrevCodeLen = 0;
+        //         // for (int i = 0; i < RepeatTimes; ++i)
+        //         // {
+        //         //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
+        //         //     GetCurrentLengthArray(LengthCnt).Add(0);
+        //         //     TotalLengths--;
+        //         //     LengthCnt++;
+        //         // }
+        //     }
+        //     // 18: Repeat a code length of 0 for 11 - 138 times (7 bits of length)
+        //     else if(CodeLen == 18)
+        //     {
+        //         CSizeType RepeatTimes = Stream.NextBits(7) + 11;
+        //         CLog::DebugLog("Repeat: %u, %u\n", 0, RepeatTimes);
+        //         Repeat(RepeatTimes, 0);
+        //         PrevCodeLen = 0;
+        //         // for (int i = 0; i < RepeatTimes; ++i)
+        //         // {
+        //         //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
+        //         //     GetCurrentLengthArray(LengthCnt).Add(0);
+        //         //     TotalLengths--;
+        //         //     LengthCnt++;
+        //         // }
+        //     }
+        //     else
+        //     {
+        //         CException::Check(0);
+        //     }
+        // }
+        //Trees->LitLenTree = CDynamicHuffmanTree::Build(LitLenValues, LitLenCodeLengths);
+        //Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
 
         delete CodeLengthsTree;
 
-        Trees->LitLenTree = CDynamicHuffmanTree::Build(LitLenValues, LitLenCodeLengths);
-        Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
+        CLog::DebugLog("LitLen: %u, %u\n", LitLenValues.Count(), LitLenCodeLengths.Count());
+        CLog::DebugLog("Dist: %u, %u\n", DistValues.Count(), DistCodeLength.Count());
+        {
+            //  Trees->LitLenTree->Root->DebugLog();
+        }
         return Trees;
     }
 
@@ -653,6 +851,7 @@ void DecodeIDATChunks(const CArray<CIDATChunk>& IDATChunks, CArray<CByteType>& O
         {
             CSizeType LitLen = HuffmanTree->DecodeLitLen(BitStream);
             CException::Check(CMath::InRange(LitLen, 0u, 285u));
+            // CLog::DebugLog("LitLen: %u\n", LitLen);
             if(LitLen < 256)
             {
                 OutData.Add(LitLen);
@@ -736,6 +935,38 @@ void DecodeIDATChunks(const CArray<CIDATChunk>& IDATChunks, CArray<CByteType>& O
     }
 }
 
+
+struct CPNGScanlines
+{
+    CArray<CByteType*> Lines = {};
+    CSizeType ScanlineLenInByte;
+};
+
+enum class EFilterType
+{
+    None = 0,
+    Sub = 1,
+    Up = 2, 
+    Average = 3,
+    Paeth = 4
+};
+
+void Unfilter(CArray<CByteType>& UnzipedData, CPNGScanlines &OutScanlines)
+{
+    CByteType* DataPtr = UnzipedData.GetData();
+    CSizeType Stride = 0;
+    do
+    {
+        CByteType FilterType;
+        Stride += CMemory::Read<CByteType>(DataPtr + Stride, FilterType);
+        EFilterType Type = (EFilterType)FilterType;
+        // TODO: Filter
+        CException::Check(Type == EFilterType::None);
+        OutScanlines.Lines.Add(DataPtr + Stride);
+        Stride += OutScanlines.ScanlineLenInByte;
+    } while (Stride < UnzipedData.Count());
+}
+
 void DebugCriticalChunks(const CCriticalChunks& InChunks)
 {
     {
@@ -766,6 +997,30 @@ void DebugCriticalChunks(const CCriticalChunks& InChunks)
         CArray<CByteType> IDATRawData = {};
         DecodeIDATChunks(InChunks.IDATChunk, IDATRawData);
         CFile::SaveDataToFile("IDAT_raw.dat", IDATRawData.GetData(), IDATRawData.SizeInBytes());
+
+        if (InChunks.IHDRChunk.IsRGBA() || InChunks.IHDRChunk.IsRGB())
+        {
+            CPNGScanlines Scanlines;
+            auto& HDRChk = InChunks.IHDRChunk;
+            Scanlines.ScanlineLenInByte = HDRChk.GetScanlineSizeInByte();
+            Unfilter(IDATRawData, Scanlines);
+            FILE* PPMFile = fopen("Raw.ppm", "w");
+            fprintf(PPMFile, "P3\n");
+            fprintf(PPMFile, "%u %u\n", HDRChk.GetImageWidth(), HDRChk.GetImageHeight());
+            fprintf(PPMFile, "%u\n", 255);
+            for(int i = 0; i < Scanlines.Lines.Count(); ++i)
+            {
+                for(int j = 0; j < HDRChk.GetImageWidth(); ++j)
+                {
+                    for(int k = 0; k < 3; ++k)
+                    {
+                        fprintf(PPMFile, "%u ", (CSizeType)Scanlines.Lines[i][j*HDRChk.GetChannelNum()+k]);
+                    }
+                }
+                fprintf(PPMFile, "\n");
+            }
+            fclose(PPMFile);
+        }
     }
 }
 

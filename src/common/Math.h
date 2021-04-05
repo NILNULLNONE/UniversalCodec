@@ -36,6 +36,8 @@ namespace CMath
     template <typename Type>
     Type DivideAndRoundUp(Type Up, Type Down)
     {
+        if (Up == 0)return 0;
+        CException::Check(Up > 0 && Down != 0);
         return (Up - 1) / Down + 1;
     }
 
@@ -49,5 +51,24 @@ namespace CMath
     Type Align(Type Value, Type Alignment)
     {
         return CMath::DivideAndRoundUp(Value, Alignment) * Alignment;
+    }
+
+    template <typename Type>
+    CSizeType BitCount(Type Value)
+    {
+        CSizeType Count = 0;
+        while (Value > 0)
+        {
+            Count++;
+            Value >>= 1;
+        }
+        return Count;
+    }
+
+    template <typename Type>
+    CSizeType CountZeroFromLeft(const Type Value)
+    {
+        CSizeType Bits = sizeof(Type) * 8;
+        return Bits - BitCounts(Value);
     }
 }
