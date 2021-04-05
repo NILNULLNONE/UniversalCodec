@@ -156,48 +156,76 @@ void ParseCriticalChunks(const CArray<CPNGChunk *> &InChunks, CCriticalChunks* O
 
 struct CZlibBitStream
 {
-    const CArray<CByteType>& Data;
-    CZlibBitStream(const CArray<CByteType> &InData) : Data(InData) {}
+    CZlibBitStream(CArray<CByteType> &InData) : Data(InData) {}
+
     bool NextBit()
     {
+        auto Ret = PeekBit();
+        BitPos++;
+        return Ret;
+    }
 
+    bool PeekBit(CSizeType Offset = 0)
+    {
+        auto Pos = BitPos + Offset;
+        return (Data[Pos / 8] & (1 << (Pos % 8))) != 0;;
     }
 
     CSizeType NextBits(CSizeType BitCnt)
     {
-        CException::Check(CMath::DivideAndRoundUp(BitCnt, 8u) <= sizeof(CSizeType));
+        auto Ret = PeekBits(BitCnt);
+        BitPos += BitCnt;
+        return Ret;
+    }
+
+    CByteType NextByte()
+    {
+        return static_cast<CByteType>(NextBits(8));
     }
 
     CSizeType PeekBits(CSizeType BitCnt)
     {
-
+        CException::Check(CMath::DivideAndRoundUp(BitCnt, 8u) <= sizeof(CSizeType));
+        CSizeType Ret = 0;
+        for (CSizeType i = 0; i < BitCnt; ++i)
+        {
+            Ret |= (((CSizeType)PeekBit(i)) << i);
+        }
+        return Ret;
     }
 
     void SkipRemainBits()
     {
-
+        if( (BitPos & 0x07u) != 0)
+        {
+            BitPos = CMath::Align(BitPos, 8u);
+        }
     }
 
     void SkipBits(CSizeType BitCnt)
     {
-
+        BitPos += BitCnt;
     }
 
     void SkipBytes(CSizeType Len)
     {
-
+        SkipBits(Len * 8u);
     }
 
     CByteType* Current()
     {
-
+        return &Data[BitPos/8];
     }
+
+private:
+    CArray<CByteType> &Data;
+    CSizeType BitPos = 0;
 };
 
 struct CZlibHuffmanTree
 {
-    virtual CSizeType DecodeLitLen(CZlibBitStream &Stream){};
-    virtual CSizeType DecodeDistance(CZlibBitStream &Stream){};
+    virtual CSizeType DecodeLitLen(CZlibBitStream &Stream) = 0;
+    virtual CSizeType DecodeDistance(CZlibBitStream &Stream)= 0;
 };
 
 struct CFixedHuffmanTree : public CZlibHuffmanTree
@@ -261,19 +289,107 @@ struct CDynamicHuffmanTree
     {
         bool IsLeaf()
         {
-
+            return !Left && !Right;
         }
+
+        CCodeNode* Next(CBitType Bit)
+        {
+            CException::Check(!IsLeaf());
+            if(Bit==0)
+            {
+                CException::Check(Left);
+                return Left;
+            }
+            CException::Check(Right);
+            return Right;
+        }
+
+        CSizeType Value = 0;
+        CCodeNode* Left = nullptr;
+        CCodeNode* Right = nullptr;
     };
     CCodeNode* Root = nullptr;
 
+    static void Insert(CCodeNode *Root, CSizeType Code, CSizeType Value, CByteType CodeLen)
+    {
+        if(CodeLen == 0)
+        {
+            Root->Value = Value;
+            return;
+        }
+        CBitType Bit = ((Code & (1 << (CodeLen-1))) != 0);
+        CCodeNode** Node = (Bit? &Root->Right : &Root->Left);
+        (*Node) = new CCodeNode{};
+        Insert(*Node, Code, Value, CodeLen - 1);
+    }
+
     static CDynamicHuffmanTree* Build(const CArray<CSizeType>& Values, const CArray<CByteType>& CodeLengths)
     {
+        CException::Check(Values.Count() == CodeLengths.Count() && CodeLengths.Count() >= 1);
 
+        CDynamicHuffmanTree* Tree = new CDynamicHuffmanTree;
+        Tree->Root = new CCodeNode{};
+
+        CByteType MaxBits = 0;
+        for(int i = 0; i < CodeLengths.Count(); ++i)
+        {
+            MaxBits = CMath::Max(MaxBits, CodeLengths[i]);
+        }
+
+        CArray<CByteType> Counts(MaxBits+1, 0);
+        for(int i = 0; i < CodeLengths.Count(); ++i)
+        {
+            Counts[CodeLengths[i]]++;
+        } 
+
+        CArray<CSizeType> NextCode(MaxBits+1, 0);
+        Counts[0] = 0;
+        CSizeType Code = 0;
+        for (int i = 1; i <= MaxBits; ++i)
+        {   
+                Code = (Code+Counts[i-1])<<1;
+                NextCode[i] = Code;
+        }
+
+        CArray<CSizeType> Codes(Values.Count(), 0);
+        for(int i = 0; i < Values.Count(); ++i)
+        {
+            auto Len = CodeLengths[i];
+            if(Len != 0)
+            {
+                Codes[i] = NextCode[Len];
+                NextCode[Len]++;
+            }
+        }
+    
+        for(int i = 0; i < Values.Count(); ++i)
+        {
+            CByteType Len = CodeLengths[i];
+            if(Len != 0)
+            {
+                Insert(Tree->Root, Codes[i], Values[i], Len);
+            }
+        }
+
+        return Tree;
     }
 
     CSizeType Decode(CZlibBitStream& Stream)
     {
-        
+        CException::Check(Root);
+        CCodeNode* Current = Root;
+        while(!Current->IsLeaf())
+        {
+            CBitType Bit = (CBitType)Stream.NextBits(1);
+            Current = Current->Next(Bit);
+            CException::Check(Current);
+            if(Current->IsLeaf())
+            {
+                return Current->Value;
+            }
+        }
+        CException::Check(0);
+        return 0;
     }
 };
 
@@ -292,6 +408,10 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
         // 4 Bits: HCLEN, # of Code Length codes - 4 (4 - 19)
         CSizeType HCLEN = Stream.NextBits(4);
 
+        {
+            CLog::DebugLog("HLIT: %u, HDIST: %u, HCLEN: %u\n", HLIT, HDIST, HCLEN);      
+        }
+
         /*
             (HCLEN + 4) x 3 bits: code lengths for the code length
             alphabet given just above, in the order: 16, 17, 18,
@@ -305,10 +425,15 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
             2, 14, 1, 15
         };
         CArray<CByteType> CodeLengthsForCodeLengths = {};
+        CLog::DebugLog("CodeLens: [");
         for(int i = 0; i < HCLEN + 4; i++)
         {
             CodeLengthsForCodeLengths.Add(Stream.NextBits(3));
+            CLog::DebugLog("<%u,%u>",
+                           (CSizeType)CodeLengthsValues[i], 
+                           (CSizeType)CodeLengthsForCodeLengths[i]);
         }
+        CLog::DebugLog("]\n");
         CDynamicHuffmanTree* CodeLengthsTree = CDynamicHuffmanTree::Build(CodeLengthsValues, CodeLengthsForCodeLengths);
 
         // /*
@@ -448,6 +573,7 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
 
         Trees->LitLenTree = CDynamicHuffmanTree::Build(LitLenValues, LitLenCodeLengths);
         Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
+        return Trees;
     }
 
     virtual CSizeType DecodeLitLen(CZlibBitStream &Stream) override
@@ -472,19 +598,33 @@ void DecodeIDATChunks(const CArray<CIDATChunk>& IDATChunks, CArray<CByteType>& O
     }
 
     CZlibBitStream BitStream(DATChunk);
+
+    // Zlib header
+    {
+        CByteType CMF = BitStream.NextByte();
+        CByteType FLG = BitStream.NextByte();
+        // CSizeType CM = BitStream.NextBits(4);
+        // CSizeType CINFO = BitStream.NextBits(4);
+        // TODO: check FDICT?
+        CException::Check( (((CSizeType)CMF)*256 + (CSizeType)FLG) % 31 == 0 );
+    }
+
     bool IsLastBlock = false;
+    CSizeType ChunkCnt = 0;
     while(!IsLastBlock)
     {
         // block header
         IsLastBlock = BitStream.NextBit();
         int CompressedType = BitStream.NextBits(2);
+        CLog::DebugLog("Chunk #%u, IsLast: %d, Compress: %d\n", 
+            ChunkCnt++, (int)IsLastBlock, CompressedType);
         // no compress
         if(CompressedType == 0)
         {
             BitStream.SkipRemainBits();
             CSizeType Len = BitStream.NextBits(32);
             CSizeType NLen = BitStream.NextBits(32);
-            CException::CheckFormatted(Len & NLen == 0, "%x & %x != 0", Len, NLen);
+            CException::CheckFormatted(Len & NLen == 0, "%x & %x != 0\n", Len, NLen);
             OutData.Concat(BitStream.Current(), Len);
             BitStream.SkipBytes(Len);
             continue;
@@ -584,7 +724,7 @@ void DecodeIDATChunks(const CArray<CIDATChunk>& IDATChunks, CArray<CByteType>& O
                 CSizeType Dist = HuffmanTree->DecodeDistance(BitStream);
                 CException::Check(CMath::InRange(Dist, 0u, 29u));
                 auto &DistBase = DistBaseTable[Dist];
-                CSizeType ExtraBits = DistBase[0];
+                ExtraBits = DistBase[0];
                 CSizeType Distance = DistBase[1] + BitStream.NextBits(ExtraBits);
                 for(int i = 0; i < Length; ++i)
                 {

@@ -15,6 +15,13 @@ public:
 
     }
 
+    CArray(CSizeType Count, const ElementType& Element)
+    {
+        CException::Check(Count > 0);
+        Reserve(Count);
+        while(Count--)Add(Element);
+    }
+
     CArray(const std::initializer_list<ElementType>& Initializer)
     {
         AddElements(Initializer);
@@ -355,14 +362,14 @@ public:
     }
 };
 
-class CZlibBitStream 
+class CBitStream 
 {
 private:
     CArray<CByteType> Data;
     CSizeType Pos = 0;
     CSizeType BitCount = 0;
 public:
-    CZlibBitStream()
+    CBitStream()
     {
         Data.Add(0);
     }

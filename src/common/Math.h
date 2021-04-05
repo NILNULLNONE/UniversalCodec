@@ -44,4 +44,10 @@ namespace CMath
     {
         return Left <= Value && Value <= Right;
     }
+
+    template<typename Type>
+    Type Align(Type Value, Type Alignment)
+    {
+        return CMath::DivideAndRoundUp(Value, Alignment) * Alignment;
+    }
 }
