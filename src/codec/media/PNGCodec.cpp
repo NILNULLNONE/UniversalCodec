@@ -411,84 +411,32 @@ struct CDynamicHuffmanTree
 
         CByteType MaxBits = 0;
         for(int i = 0; i < CodeLengths.Count(); ++i)
-        {
             MaxBits = CMath::Max(MaxBits, CodeLengths[i]);
-        }
 
         CArray<CByteType> Counts(MaxBits+1, 0);
         for(int i = 0; i < CodeLengths.Count(); ++i)
-        {
             Counts[CodeLengths[i]]++;
-        }
-
-        CLog::DebugLog("BitCounts:\n");
-        for (int i = 0; i < Counts.Count(); ++i)
-        {
-            CLog::DebugLog("\t %d | %u\n", i, Counts[i]);
-        }
 
         CArray<CSizeType> NextCode(MaxBits+1, 0);
         Counts[0] = 0;
         CSizeType Code = 0;
-        for (int i = 1; i <= MaxBits; ++i)
-        {   
-                Code = (Code+Counts[i-1])<<1;
-                NextCode[i] = Code;
-        }
-
-        CLog::DebugLog("NextCode:\n");
-        for (int i = 0; i < NextCode.Count(); ++i)
-        {
-            CLog::DebugLog("\t %d | %u\n", i, NextCode[i]);
-        }
+        for (int i = 1; i <= MaxBits; ++i) 
+            NextCode[i] = Code = (Code + Counts[i - 1]) << 1;
 
         CSizeType MaxCode = 0;
         Values.ForEach([&](CSizeType Index, const auto& Value){MaxCode = CMath::Max(MaxCode, Value);});
         CArray<CSizeType> CodeLengthOf(MaxCode+1, 0);
-        for(int i = 0; i < Values.Count(); ++i)
-        {
+        for(int i = 0; i < Values.Count(); ++i) 
             CodeLengthOf[Values[i]] = CodeLengths[i];
-        }
 
         CArray<CSizeType> Codes(MaxCode+1, 0);
         for (int ValueCode = 0; ValueCode <= MaxCode; ++ValueCode)
-        {
-            // auto Len = CodeLengths[i];
-            auto Len = CodeLengthOf[ValueCode];
-            if(Len != 0)
-            {
-                Codes[ValueCode] = NextCode[Len];
-                NextCode[Len]++;
-            }
-        }
-    
-        auto GetBinaryStr = [](CSizeType InValue, CSizeType BitCnt)->char*
-        {
-            static char Buffer[64];
-            memset(Buffer, 0, sizeof(Buffer));
-            // auto BitCnt = CMath::BitCount(InValue);
-            for(int i = 0; i< BitCnt; ++i)
-            {
-                Buffer[BitCnt-i-1] = ( (InValue & (1<<i)) != 0? '1' : '0');
-            }
-            return Buffer;
-        };
+            if(CodeLengthOf[ValueCode] != 0)
+                Codes[ValueCode] = NextCode[CodeLengthOf[ValueCode]]++;
 
         for(int i = 0; i < Values.Count(); ++i)
-        {
-            CLog::DebugLog("% 3u | % 2u | %s\n",
-                Values[i], CodeLengths[i], GetBinaryStr(Codes[Values[i]], CodeLengths[i]));
-        }
-
-        for(int i = 0; i < Values.Count(); ++i)
-        {
-            CByteType Len = CodeLengths[i];
-            if(Len != 0)
-            {
-                CLog::DebugLog("Insert: %u, %u, %u\n", Values[i], (CSizeType)Len, Codes[Values[i]]);
-                Insert(Tree->Root, Codes[Values[i]], Values[i], Len);
-            }
-        }
+            if (CodeLengths[i] != 0)
+                Insert(Tree->Root, Codes[Values[i]], Values[i], CodeLengths[i]);
 
         return Tree;
     }
@@ -527,30 +475,12 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
         // 4 Bits: HCLEN, # of Code Length codes - 4 (4 - 19)
         CSizeType HCLEN = Stream.NextBits(4);
 
-        {
-            CLog::DebugLog("HLIT: %u, HDIST: %u, HCLEN: %u\n", HLIT, HDIST, HCLEN);      
-        }
-
-        {
-            // test build huffman tree
-            // CArray<CSizeType> Values = {'J', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'};
-            // CArray<CByteType> Lengths = {0, 3, 3, 3, 3, 3, 2, 4, 4, 0};
-            // CDynamicHuffmanTree::Build(Values, Lengths)->Root->DebugLog();
-        }
-
-        {
-            // test build huffman tree
-            // CArray<CSizeType> Values = {'A', 'B', 'C', 'D'};
-            // CArray<CByteType> Lengths = {2, 1, 3, 3};
-            // CDynamicHuffmanTree::Build(Values, Lengths)->Root->DebugLog();
-        }
-
         /*
             (HCLEN + 4) x 3 bits: code lengths for the code length
             alphabet given just above, in the order: 16, 17, 18,
             0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15
         */
-        CArray<CSizeType> CodeLengthsValues = 
+        static CArray<CSizeType> CodeLengthsValues = 
         {
             16, 17, 18, 0, 8,
             7, 9, 6, 10, 5, 
@@ -558,42 +488,9 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
             2, 14, 1, 15
         };
         CArray<CByteType> CodeLengthsForCodeLengths = {};
-        CLog::DebugLog("CodeLens: [");
         for(int i = 0; i < HCLEN + 4; i++)
-        {
             CodeLengthsForCodeLengths.Add(Stream.NextBits(3));
-            CLog::DebugLog("<%u,%u>",
-                           (CSizeType)CodeLengthsValues[i], 
-                           (CSizeType)CodeLengthsForCodeLengths[i]);
-        }
-        CLog::DebugLog("]\n");
         CDynamicHuffmanTree* CodeLengthsTree = CDynamicHuffmanTree::Build(CodeLengthsValues, CodeLengthsForCodeLengths);
-
-        // /*
-        //     HLIT + 257 code lengths for the literal/length alphabet,
-        //     encoded using the code length Huffman code
-        // */
-        // CArray<CSizeType> LitLenValues = {};
-        // CArray<CByteType> LitLenCodeLengths = {};
-        // for(int i = 0; i < HLIT + 257; ++i)
-        // {
-        //     LitLenValues.Add(i);
-        //     LitLenCodeLengths.Add(CodeLengthsTree->Decode(Stream));
-        // }
-        // Trees->LitLenTree = CDynamicHuffmanTree::Build(LitLenValues, LitLenCodeLengths);
-
-        // /*
-        //     HDIST + 1 code lengths for the distance alphabet,
-        //     encoded using the code length Huffman code
-        // */
-        // CArray<CSizeType> DistValues = {};
-        // CArray<CByteType> DistCodeLength = {};
-        // for(int i = 0; i < HDIST + 1; ++i)
-        // {
-        //     DistValues.Add(i);
-        //     DistCodeLength.Add(CodeLengthsTree->Decode(Stream));
-        // }
-        // Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
 
         /*
             HLIT + 257 code lengths for the literal/length alphabet,
@@ -650,127 +547,8 @@ struct CDynamicHuffmanTrees : public CZlibHuffmanTree
             DistValues, PreLen, Stream, HDIST + 1));
         Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
 
-        // /*
-        //     The code length repeat codes can cross from HLIT + 257 to the HDIST + 1 code lengths. 
-        //     In other words, all code lengths form a single sequence of HLIT + HDIST + 258 values.
-        // */
-        // CArray<CSizeType> LitLenValues = {};
-        // CArray<CByteType> LitLenCodeLengths = {};
-        // CArray<CSizeType> DistValues = {};
-        // CArray<CByteType> DistCodeLength = {};
-        // CSizeType TotalLengths = HLIT + HDIST + 258;
-        // CSizeType LengthCnt = 0;
-        // CSizeType LitLenCnt = HLIT + 257;
-        // CSizeType DistCnt = HDIST + 1;
-        // CByteType PrevCodeLen = 0;
-
-        // auto GetCurrentValuesArray = 
-        //     [&LitLenValues, &DistValues, LitLenCnt]
-        //     (CSizeType LengthCnt) 
-        //     -> CArray<CSizeType>& 
-        //     {return LengthCnt < LitLenCnt? LitLenValues : DistValues;};
-
-        // auto GetCurrentLengthArray = 
-        //     [&LitLenCodeLengths, &DistCodeLength, LitLenCnt]
-        //     (CSizeType LengthCnt) 
-        //     -> CArray<CByteType>& 
-        //     {return LengthCnt < LitLenCnt? LitLenCodeLengths : DistCodeLength;};
-
-        // auto GetCurrentValue = [LitLenCnt](CSizeType LengthCnt)
-        // {
-        //     return LengthCnt < LitLenCnt? LengthCnt : (LengthCnt - LitLenCnt); 
-        // };
-
-        // auto Repeat = [&](CSizeType RepeatTimes, CByteType Value)
-        // {
-        //     for(int i = 0; i < RepeatTimes && TotalLengths > 0; ++i)
-        //     {
-        //         GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-        //         GetCurrentLengthArray(LengthCnt).Add(Value);
-        //         TotalLengths--;
-        //         LengthCnt++;
-        //     }
-        // };
-
-        // while(TotalLengths > 0)
-        // {
-        //     // CLog::DebugLog("LenCnt: %u\n", LengthCnt);
-        //     CSizeType CodeLen = CodeLengthsTree->Decode(Stream);
-        //     CLog::DebugLog("LenCnt: %u, CodeLen: %u\n", LengthCnt, CodeLen);
-        //     // 0 - 15: Represent code lengths of 0 - 15
-        //     if(CodeLen <= 15)
-        //     {
-        //         GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-        //         GetCurrentLengthArray(LengthCnt).Add(CodeLen);
-        //         TotalLengths--;
-        //         LengthCnt++;
-        //         PrevCodeLen = CodeLen;
-        //     }
-        //     /*
-        //     16: Copy the previous code length 3 - 6 times.
-        //         The next 2 bits indicate repeat length(0 = 3, ... , 3 = 6)
-        //         Example: Codes 8, 16 (+2 bits 11),
-        //         16 (+2 bits 10) will expand to
-        //         12 code lengths of 8 (1 + 6 + 5)
-        //     */
-        //     else if(CodeLen == 16)
-        //     {
-        //         CSizeType RepeatTimes = Stream.NextBits(2) + 3;
-        //         CLog::DebugLog("Repeat: %u, %u\n", PrevCodeLen, RepeatTimes);
-        //         Repeat(RepeatTimes, PrevCodeLen);
-        //         // for(int i = 0; i < RepeatTimes; ++i)
-        //         // {
-        //         //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-        //         //     GetCurrentLengthArray(LengthCnt).Add(PrevCodeLen);
-        //         //     TotalLengths--;
-        //         //     LengthCnt++;
-        //         // }
-        //     }
-        //     // 17: Repeat a code length of 0 for 3 - 10 times. (3 bits of length)
-        //     else if(CodeLen == 17)
-        //     {
-        //         CSizeType RepeatTimes = Stream.NextBits(3) + 3;
-        //         CLog::DebugLog("Repeat: %u, %u\n", 0, RepeatTimes);
-        //         Repeat(RepeatTimes, 0);
-        //         PrevCodeLen = 0;
-        //         // for (int i = 0; i < RepeatTimes; ++i)
-        //         // {
-        //         //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-        //         //     GetCurrentLengthArray(LengthCnt).Add(0);
-        //         //     TotalLengths--;
-        //         //     LengthCnt++;
-        //         // }
-        //     }
-        //     // 18: Repeat a code length of 0 for 11 - 138 times (7 bits of length)
-        //     else if(CodeLen == 18)
-        //     {
-        //         CSizeType RepeatTimes = Stream.NextBits(7) + 11;
-        //         CLog::DebugLog("Repeat: %u, %u\n", 0, RepeatTimes);
-        //         Repeat(RepeatTimes, 0);
-        //         PrevCodeLen = 0;
-        //         // for (int i = 0; i < RepeatTimes; ++i)
-        //         // {
-        //         //     GetCurrentValuesArray(LengthCnt).Add(GetCurrentValue(LengthCnt));
-        //         //     GetCurrentLengthArray(LengthCnt).Add(0);
-        //         //     TotalLengths--;
-        //         //     LengthCnt++;
-        //         // }
-        //     }
-        //     else
-        //     {
-        //         CException::Check(0);
-        //     }
-        // }
-        //Trees->LitLenTree = CDynamicHuffmanTree::Build(LitLenValues, LitLenCodeLengths);
-        //Trees->DistTree = CDynamicHuffmanTree::Build(DistValues, DistCodeLength);
-
         delete CodeLengthsTree;
 
-        CLog::DebugLog("LitLen: %u, %u\n", LitLenValues.Count(), LitLenCodeLengths.Count());
-        CLog::DebugLog("Dist: %u, %u\n", DistValues.Count(), DistCodeLength.Count());
-        {
-            //  Trees->LitLenTree->Root->DebugLog();
-        }
         return Trees;
     }
 
@@ -801,8 +579,6 @@ void DecodeIDATChunks(const CArray<CIDATChunk>& IDATChunks, CArray<CByteType>& O
     {
         CByteType CMF = BitStream.NextByte();
         CByteType FLG = BitStream.NextByte();
-        // CSizeType CM = BitStream.NextBits(4);
-        // CSizeType CINFO = BitStream.NextBits(4);
         // TODO: check FDICT?
         CException::Check( (((CSizeType)CMF)*256 + (CSizeType)FLG) % 31 == 0 );
     }
@@ -851,7 +627,6 @@ void DecodeIDATChunks(const CArray<CIDATChunk>& IDATChunks, CArray<CByteType>& O
         {
             CSizeType LitLen = HuffmanTree->DecodeLitLen(BitStream);
             CException::Check(CMath::InRange(LitLen, 0u, 285u));
-            // CLog::DebugLog("LitLen: %u\n", LitLen);
             if(LitLen < 256)
             {
                 OutData.Add(LitLen);
