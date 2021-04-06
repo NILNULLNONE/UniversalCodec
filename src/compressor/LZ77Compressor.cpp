@@ -115,10 +115,10 @@ static CSizeType WriteDecompressedData(CArray<CByteType>& DecompressedData,
     CSizeType Len = Data[Iter+1];
     CSizeType EndByte = Data[Iter+2];
     // CLog::DebugLog("Write Decompressed Data: <%u, %u, %u>\n", Dist, Len, EndByte);
-    // const CByteType* Start = DecompressedData.End() - Dist;
+    // const CByteType* Start = DecompressedData.EndPtr() - Dist;
     for(int Idx = 0; Idx < Len; ++Idx)
     {
-        CByteType Byte = *(DecompressedData.End() - Dist);
+        CByteType Byte = *(DecompressedData.EndPtr() - Dist);
         DecompressedData.Add( Byte );
     }
     DecompressedData.Add(EndByte);

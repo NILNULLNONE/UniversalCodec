@@ -1,7 +1,17 @@
 #pragma once
 #include <cstdio>
 #include "Memory.h"
+#include "String.h"
 #include "TypeDef.h"
+
+class CFilePath
+{
+public:
+    static CString Join(const CString& InPrefix, const CString& InSuffix)
+    {
+        
+    }
+};
 
 class CFile
 {

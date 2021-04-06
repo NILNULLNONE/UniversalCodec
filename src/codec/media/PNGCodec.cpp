@@ -702,7 +702,7 @@ void DecodeIDATChunks(const CArray<CIDATChunk>& IDATChunks, CArray<CByteType>& O
                 CSizeType Distance = DistBase[1] + BitStream.NextBits(ExtraBits);
                 for(int i = 0; i < Length; ++i)
                 {
-                    CByteType Byte = *(OutData.End() - Distance);
+                    CByteType Byte = *(OutData.EndPtr() - Distance);
                     OutData.Add(Byte);
                 }
             }

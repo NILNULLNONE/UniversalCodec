@@ -102,7 +102,7 @@ public:
     {
         if(OtherLen <= 0)return;
         Resize(Count() + OtherLen);
-        CMemory::Copy(End() - OtherLen, Other, OtherLen);
+        CMemory::Copy(EndPtr() - OtherLen, Other, OtherLen);
     }
 
     void RemoveAt(CSizeType Index)
@@ -294,10 +294,65 @@ public:
         CMemory::Zero(this, sizeof(*this));
     }
 
-    const ElementType* Begin() const {return DataPtr;}
-    ElementType* Begin(){return DataPtr;}
-    const ElementType* End() const {return DataPtr + ArraySize;}
-    ElementType* End() {return DataPtr + ArraySize;}
+    const ElementType* BeginPtr() const {return DataPtr;}
+    ElementType* BeginPtr(){return DataPtr;}
+    const ElementType* EndPtr() const {return DataPtr + ArraySize;}
+    ElementType* EndPtr() {return DataPtr + ArraySize;}
+
+public:
+    struct Iterator
+    {
+        Iterator(ElementType* InPtr) : Ptr(InPtr)
+        {
+
+        }
+
+        Iterator& operator=(const Iterator& Iter)
+        {
+            Ptr = Iter.Ptr;
+            return *this;
+        }
+
+        bool operator!=(const Iterator& Iter) const
+        {
+            return Ptr != Iter.Ptr;
+        }
+
+        Iterator& operator++()
+        {
+            Ptr++;
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            Iterator Ret = *this;
+            (*this)++;
+            return Ret;
+        }
+
+        Iterator& operator--()
+        {
+            Ptr--;
+            return *this;
+        }
+
+        Iterator operator--(int)
+        {
+            Iterator Ret = *this;
+            (*this)--;
+            return Ret;
+        }
+
+        ElementType& operator*()
+        {
+            return *Ptr;
+        }
+    private:
+        ElementType* Ptr;
+    };
+    Iterator begin() {return Iterator(DataPtr);}
+    Iterator end() {return Iterator(DataPtr + ArraySize);}
 private:
     ElementType* DataPtr = nullptr;
     CSizeType ArraySize = 0;

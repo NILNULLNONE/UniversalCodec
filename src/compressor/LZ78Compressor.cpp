@@ -309,8 +309,8 @@ void WriteToCompressedData(CArray<CLZ78Packet> &DstData, CIndexType Index, CByte
     // DstData.AddElements({(CByteType)(Index&( (1<<8)-1)), (CByteType)( (Index& ( ( (1<<8)-1 ) << 8 ) ) >> 8), Byte});
     
     // DstData.AddElements({0, 0, 0});
-    // CMemory::Write<CIndexType>(DstData.End() - sizeof(CIndexType) - sizeof(CByteType), Index);
-    // CMemory::Write<CByteType>(DstData.End() - sizeof(CByteType), Byte);
+    // CMemory::Write<CIndexType>(DstData.EndPtr() - sizeof(CIndexType) - sizeof(CByteType), Index);
+    // CMemory::Write<CByteType>(DstData.EndPtr() - sizeof(CByteType), Byte);
 
     DstData.Add({Index, Byte});
 }
