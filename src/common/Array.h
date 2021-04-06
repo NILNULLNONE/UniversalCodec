@@ -52,8 +52,14 @@ public:
 
     void Resize(CSizeType Size)
     {
-        Reserve(Size);
-        ArraySize = Size;
+        while(Size > Count())
+            Add(ElementType());
+
+        if(Size < Count())
+        {
+            Reserve(Size);
+            ArraySize = Size;
+        }
     }
 
     CSizeType Count() const
@@ -240,7 +246,7 @@ public:
     CArray<ElementType>& operator=(const CArray<ElementType>& Other)
     {
         Resize(Other.Count());
-        CMemory::Copy(GetData(), Other.GetData(), Other.Count());
+        CMemory::CopyObjects(GetData(), Other.GetData(), Count());
         return *this;
     }
 
@@ -347,6 +353,32 @@ public:
         ElementType& operator*()
         {
             return *Ptr;
+        }
+
+        template<typename Type>
+        Iterator operator+(Type Value)
+        {
+            return Iterator(Ptr + Value);
+        }
+
+        template<typename Type>
+        Iterator operator-(Type Value)
+        {
+            return Iterator(Ptr - Value);
+        }
+
+        template<typename Type>
+        Iterator& operator+=(Type Value)
+        {
+            Ptr += Value;
+            return *this;
+        }
+
+        template<typename Type>
+        Iterator& operator-=(Type Value)
+        {
+            Ptr -= Value;
+            return *this;
         }
     private:
         ElementType* Ptr;

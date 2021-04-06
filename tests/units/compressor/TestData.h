@@ -2,6 +2,8 @@
 #include "common/TypeDef.h"
 #include "common/Memory.h"
 #include "compressor/CompressorInterface.h"
+#include "common/String.h"
+#include "common/File.h"
 
 struct CCompressorTestData
 {
@@ -24,25 +26,28 @@ struct CCompressorTestData
     CByteType *OutData2 = nullptr;
     CSizeType OutData2Len = 0;
 
-    const char *TestInFilename_mid = "D:\\Study\\UniversalCodec\\build\\bin\\Debug\\gtestd.lib";
-    const char *TestEncodedFilename_mid = "D:\\Study\\UniversalCodec\\build\\bin\\Debug\\gtestd.huff.enc";
-    const char *TestDecodedFilename_mid = "D:\\Study\\UniversalCodec\\build\\bin\\Debug\\gtestd.huff.dec";
+    const CString TestDataDir = "..\\tests\\testdata";
+    const CString TestMediaDir = CFilePath::Join(TestDataDir, "media");
+    const CString TestCompressorDir = CFilePath::Join(TestDataDir, "compressor");
 
-    const char *TestInFilename_big = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-Renderer.pdb";
-    const char *TestEncodedFilename_big = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-Renderer.pdb.enc";
-    const char *TestDecodedFilename_big = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-Renderer.pdb.dec";
+    const char *BinFN1KB = CFilePath::Join(TestCompressorDir, "Bin_1KB.txt").Copy();
+    const char *BinFN1KBCompressed = CFilePath::Join(TestCompressorDir, "Bin_1KB.enc").Copy();
+    const char *BinFN1KBDeompressed = CFilePath::Join(TestCompressorDir, "Bin_1KB.dec").Copy();
 
-    const char *BinTestFilename_small = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-PortalMessages.pdb";
-    const char *BinTestEncodedFilename_small = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-PortalMessages.pdb.enc";
-    const char *BinTestDecodedFilename_small = "D:\\Software\\Unreal\\UnrealEngine-release\\Engine\\Binaries\\Win64\\UE4Editor-PortalMessages.pdb.dec";
+    const char *BinFN1MB = CFilePath::Join(TestCompressorDir, "Bin_1MB.txt").Copy();
+    const char *BinFN1MBCompressed = CFilePath::Join(TestCompressorDir, "Bin_1MB.enc").Copy();
+    const char *BinFN1MBDeompressed = CFilePath::Join(TestCompressorDir, "Bin_1MB.dec").Copy();
 
-    // const char *TextTestInFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj";
-    // const char *TextTestEncodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.enc";
-    // const char *TextTestDecodedFilename = "D:\\Study\\UniversalCodec\\build\\tests\\units\\INSTALL.vcxproj.dec";
+    const char *TextFN1KB = CFilePath::Join(TestCompressorDir, "Text_1KB.txt").Copy();
+    const char *TextFN1KBCompressed = CFilePath::Join(TestCompressorDir, "Text_1KB.enc").Copy();
+    const char *TextFN1KBDeompressed = CFilePath::Join(TestCompressorDir, "Text_1KB.dec").Copy();
 
-    const char *TextTestInFilename = "C:\\Users\\35974\\Downloads\\1617460103.txt";
-    const char *TextTestEncodedFilename = "C:\\Users\\35974\\Downloads\\1617460103.txt.enc";
-    const char *TextTestDecodedFilename = "C:\\Users\\35974\\Downloads\\1617460103.txt.dec";
+    const char *TextFN1MB = CFilePath::Join(TestCompressorDir, "Text_1MB.txt").Copy();
+    const char *TextFN1MBCompressed = CFilePath::Join(TestCompressorDir, "Text_1MB.enc").Copy();
+    const char *TextFN1MBDeompressed = CFilePath::Join(TestCompressorDir, "Text_1MB.dec").Copy();
+
+    const char* PNGFN0 = CFilePath::Join(TestMediaDir, "mario.png").Copy();
+    const char* PNGFN1 = CFilePath::Join(TestMediaDir, "mushroom3.png").Copy();
 
     // non-constant
     CByteType *InDataRepeat1024 = nullptr;
@@ -65,6 +70,7 @@ struct CCompressorTestData
     ~CCompressorTestData()
     {
         CMemory::SafeFree(InDataRepeat1024);
+        // TODO: free const char*
     }
 };
 

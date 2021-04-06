@@ -22,6 +22,21 @@ namespace CMemory
     }
 
     template<typename ElementType>
+    CSizeType CopyObjects(ElementType *Dst, const ElementType *Src, CSizeType Size)
+    {
+        for(int i = 0; i < Size; ++i)
+        {
+            Dst[i] = Src[i];
+        }
+    }
+
+    template<typename ElementType>
+    ElementType* MallocObjects(int ElementCount)
+    {
+        return new ElementType[ElementCount];
+    }
+
+    template<typename ElementType>
     ElementType* Realloc(ElementType* InDataPtr, int ElementCount)
     {
         return static_cast<ElementType*>(realloc(InDataPtr, sizeof(ElementType) * ElementCount));
@@ -30,9 +45,16 @@ namespace CMemory
     template <typename ElementType>
     void SafeFree(ElementType *&InPtr)
     {
-        if (!InPtr)
-            return;
+        if (!InPtr)return;
         free(InPtr);
+        InPtr = nullptr;
+    }
+
+    template <typename ElementType>
+    void SafeFreeObjects(ElementType *&InPtr)
+    {
+        if(!InPtr)return;
+        delete[]InPtr;
         InPtr = nullptr;
     }
 

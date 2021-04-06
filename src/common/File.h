@@ -9,7 +9,14 @@ class CFilePath
 public:
     static CString Join(const CString& InPrefix, const CString& InSuffix)
     {
-        
+        CException::Check(!InPrefix.IsEmpty() && !InSuffix.IsEmpty());
+        bool PrefixEndWithSlash = InPrefix.EndsWith('\\') || InPrefix.EndsWith('/');
+        bool SuffixStartWithSlash = InSuffix.StartsWith('\\') || InSuffix.EndsWith('/');
+        if(PrefixEndWithSlash != SuffixStartWithSlash)return InPrefix + InSuffix;
+        CString TmpPrefix = InPrefix;
+        if(PrefixEndWithSlash)TmpPrefix.RemoveLast();
+        else TmpPrefix.Append('/');
+        return TmpPrefix + InSuffix;
     }
 };
 
